@@ -101,13 +101,47 @@ async function searchExternalApi(cityPath, lastName, streetName, cityName) {
 
       const owner = $('#MainContent_lblGenOwner').text();
       const address = $('#MainContent_lblLocation').text();
-      const totalValue = $('#MainContent_lblGenAssessTot').text();
-      const landUse = $('#MainContent_lblGenUse').text();
+      let totalValue = $('#MainContent_lblGenAssessTot').text();
+      if (!totalValue) {
+        // Fallback: Find the "Assessment" table by ID and get the value from 2nd row, 4th column
+        const assessmentTable = $('#MainContent_grdCurrentValueAsmt');
+        if (assessmentTable.length) {
+          const secondRow = assessmentTable.find('tbody tr').eq(1); // 2nd row (0-based index)
+          const fourthCell = secondRow.find('td').eq(3); // 4th column (0-based index)
+          totalValue = fourthCell.text().trim();
+        }
+      }
+      let landUse = $('#MainContent_lblGenUse').text();
+      if (!landUse) {
+        // Fallback: Try both possible tables for land use
+        const landUseTable1 = $('#MainContent_ctl01_grdCns');
+        const landUseTable2 = $('#MainContent_ctl02_grdCns');
+        let found = false;
+        [landUseTable1, landUseTable2].forEach(table => {
+          if (!found && table.length) {
+            const secondRow = table.find('tbody tr').eq(1); // 2nd row (0-based index)
+            const secondCell = secondRow.find('td').eq(1); // 2nd column (0-based index)
+            const value = secondCell.text().trim();
+            if (value) {
+              landUse = value;
+              found = true;
+            }
+          }
+        });
+      }
       const zipcode = $('#MainContent_lblGenZip').text();
+      let salePrice = '';
+      // Look for a <tr> where the first <td> has 'Sale Price', use the second <td> for the value
+      $('tr').each((i, el) => {
+        const tds = $(el).find('td');
+        if (tds.length >= 2 && $(tds[0]).text().trim().toLowerCase() === 'sale price') {
+          salePrice = $(tds[1]).text().trim();
+        }
+      });
 
-      console.log("html--------------------------------\n", html);
+     // console.log("html--------------------------------\n", html);
 
-      return { owner, address, totalValue, landUse, zipcode, city: cityName, html: $.html() };
+      return { owner, address, totalValue, landUse, zipcode, city: cityName, salePrice, html: $.html() };
     });
 
     const properties = await Promise.all(detailPromises);
@@ -167,6 +201,7 @@ function searchCsv(filePath, lastName, streetName, cityName) {
         let landUse = '';
         let totalValue = '';
         let city = '';
+        let salePrice = '';
 
         if (isBelmont) {
           owner = data.OWNER1 ? data.OWNER1.trim() : '';
@@ -176,6 +211,7 @@ function searchCsv(filePath, lastName, streetName, cityName) {
           landUse = useCodeMapping[data.USE_CODE] || (data.STYLE ? data.STYLE.trim() : '');
           totalValue = data.TOTAL_VAL;
           city = data.CITY ? data.CITY.trim() : '';
+          salePrice = data.LS_PRICE ? data.LS_PRICE.trim() : '';
         } else { // Assuming Boston
           owner = data.OWNER || '';
           const stNum = data.ST_NUM ? data.ST_NUM.trim() : '';
@@ -186,6 +222,7 @@ function searchCsv(filePath, lastName, streetName, cityName) {
           landUse = data.LU_DESC;
           totalValue = data.TOTAL_VALUE;
           city = data.CITY || '';
+          salePrice = data.LS_PRICE ? data.LS_PRICE.trim() : '';
         }
 
         const ownerMatch = !lastName || owner.toLowerCase().includes(lastName.toLowerCase());
@@ -195,7 +232,7 @@ function searchCsv(filePath, lastName, streetName, cityName) {
         const cityMatch = !isBelmont || !cityName || city.toLowerCase().includes(cityName.toLowerCase());
 
         if (ownerMatch && streetMatch && cityMatch) {
-          results.push({ owner, address, zipcode, landUse, totalValue, city: city || cityName, html: null });
+          results.push({ owner, address, zipcode, landUse, totalValue, city: city || cityName, salePrice, html: null });
         }
       })
       .on('end', () => {

@@ -129,6 +129,7 @@ function PropertySearch() {
               <th>Zip Code</th>
               <th>Land Use</th>
               <th>Total Value</th>
+              <th>Sale Price</th>
             </tr>
           </thead>
           <tbody>
@@ -142,6 +143,7 @@ function PropertySearch() {
                 <td>{prop.zipcode}</td>
                 <td>{prop.landUse}</td>
                 <td>{prop.totalValue}</td>
+                <td>{prop.salePrice}</td>
               </tr>
             ))}
           </tbody>
