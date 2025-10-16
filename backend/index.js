@@ -5,7 +5,13 @@ const csv = require('csv-parser');
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 const path = require('path');
+const https = require('https');
 const app = express();
+
+// Configure HTTPS agent to handle SSL certificate issues
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false
+});
 
 app.use(cors());
 app.use(express.json());
@@ -98,13 +104,16 @@ async function searchExternalApi(cityPath, lastName, streetName, cityName) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(initialBody),
+      agent: httpsAgent,
     });
 
     const initialData = await initialResponse.json();
     
     const detailPromises = (initialData.d.records || initialData.d).map(async (item) => {
       const detailUrl = `https://gis.vgsi.com/${cityPath}/Parcel.aspx?Pid=${item.id}`;
-      const detailResponse = await fetch(detailUrl);
+      const detailResponse = await fetch(detailUrl, {
+        agent: httpsAgent,
+      });
       const html = await detailResponse.text();
       const $ = cheerio.load(html);
 
