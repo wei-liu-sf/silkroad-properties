@@ -41,6 +41,11 @@ app.post('/api/query_properties', async (req, res) => {
 
       const csvPromises = Object.entries(csvFiles).map(([city, fileName]) => {
         const filePath = path.join(__dirname, fileName);
+        // Check if CSV file exists before trying to process it
+        if (!fs.existsSync(filePath)) {
+          console.error(`CSV file not found: ${filePath}`);
+          return Promise.resolve([]); // Return empty array instead of crashing
+        }
         return searchCsv(filePath, lastName, streetName, city);
       });
 
@@ -59,6 +64,11 @@ app.post('/api/query_properties', async (req, res) => {
       res.json({ properties });
     } else if (csvFiles[normalizedCity]) {
       const filePath = path.join(__dirname, csvFiles[normalizedCity]);
+      // Check if CSV file exists
+      if (!fs.existsSync(filePath)) {
+        console.error(`CSV file not found: ${filePath}`);
+        return res.status(500).json({ error: `Data file not found for ${normalizedCity}` });
+      }
       const properties = await searchCsv(filePath, lastName, streetName, normalizedCity);
       res.json({ properties });
     } else {
@@ -265,6 +275,6 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
 });
